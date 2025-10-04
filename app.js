@@ -888,12 +888,12 @@ window.forceSync = forceSync;
 // Global sync configuration - JSONBin as primary server
 const SYNC_CONFIG = {
     jsonbinEnabled: true,         // JSONBin as primary sync
-    firebaseEnabled: false,       // Disable Firebase
+    firebaseEnabled: false,       // Disable Firebase completely
     gistBackupEnabled: false,     // Disable backup (JSONBin is primary)
     syncInterval: 3000,           // 3 seconds - faster sync
     conflictResolution: 'server_wins', // 'server_wins', 'client_wins', 'merge'
     maxRetries: 3,
-    jsonbinBinId: '675f8a4ce41b4d026a8b3e2a' // Your JSONBin bin ID
+    jsonbinBinId: '68e158bd43b1c97be95a581f' // Updated with your new bin ID
 };
 
 // Sync state variables
@@ -930,15 +930,15 @@ function initializeGlobalSync() {
         initializeJsonBinSync();
     }
     
-    // Initialize Firebase sync (disabled)
-    if (SYNC_CONFIG.firebaseEnabled && window.firebaseDatabase) {
-        initializeFirebaseSync();
-    }
+    // Firebase sync disabled - using JSONBin only
+    // if (SYNC_CONFIG.firebaseEnabled && window.firebaseDatabase) {
+    //     initializeFirebaseSync();
+    // }
     
-    // Initialize Gist backup (disabled)
-    if (SYNC_CONFIG.gistBackupEnabled) {
-        initializeGistBackup();
-    }
+    // Gist backup disabled - using JSONBin only
+    // if (SYNC_CONFIG.gistBackupEnabled) {
+    //     initializeGistBackup();
+    // }
     
     // Start sync monitoring
     startSyncMonitoring();
