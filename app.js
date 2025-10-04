@@ -88,6 +88,11 @@ function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
     const notificationText = document.getElementById('notificationText');
     
+    // Clear any existing timeout
+    if (window.notificationTimeout) {
+        clearTimeout(window.notificationTimeout);
+    }
+    
     // Set the message
     notificationText.textContent = message;
     
@@ -99,9 +104,10 @@ function showNotification(message, type = 'success') {
     // Show the notification
     notification.style.display = 'flex';
     
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
+    // Auto-hide after 3 seconds (store timeout ID)
+    window.notificationTimeout = setTimeout(() => {
         notification.style.display = 'none';
+        window.notificationTimeout = null;
     }, 3000);
 }
 
@@ -773,6 +779,9 @@ function initializeApp() {
         // Initialize global sync system
         initializeGlobalSync();
         
+        // Initialize debug panel for mobile devices
+        initializeDebugPanel();
+        
         // Set up page visibility handling
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('beforeunload', stopRealTimeSync);
@@ -830,6 +839,9 @@ window.forceReset = function() {
     localStorage.clear();
     location.reload();
 };
+
+// Force sync function for testing
+window.forceSync = forceSync;
 
 // ============================================================================
 // GLOBAL SYNCHRONIZATION SYSTEM
@@ -912,11 +924,15 @@ function initializeFirebaseSync() {
         // Listen for real-time updates
         onValue(sevaRef, (snapshot) => {
             const data = snapshot.val();
+            console.log('🔥 Firebase data received:', data);
             if (data && data.assignments) {
+                console.log('📥 Processing remote update...');
                 handleRemoteUpdate(data);
+            } else {
+                console.log('⚠️ No valid data in snapshot');
             }
         }, (error) => {
-            console.error('Firebase sync error:', error);
+            console.error('❌ Firebase sync error:', error);
             syncState.firebaseConnected = false;
             updateSyncStatusDisplay();
         });
@@ -971,9 +987,11 @@ function handleRemoteUpdate(remoteData) {
             // For seva app, we'll be more permissive - use remote data if it's newer
         }
         
-        // Update local data if remote is newer (more permissive)
-        if (remoteTimestamp > localTimestamp) {
-            console.log('Updating local data with remote data');
+        // Update local data if remote is newer OR if we don't have local data
+        if (remoteTimestamp > localTimestamp || !localTimestamp) {
+            console.log('✅ Updating local data with remote data');
+            console.log('Remote assignments:', remoteData.assignments);
+            
             currentAssignments = remoteData.assignments || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
             localStorage.setItem(LAST_UPDATED_KEY, remoteData.timestamp);
@@ -981,6 +999,7 @@ function handleRemoteUpdate(remoteData) {
             renderTable();
             updateLastUpdatedTime();
             
+            // Show notification for remote updates
             if (isLoggedIn) {
                 showNotification('Data updated from another device! 🔄', 'info');
             }
@@ -988,6 +1007,10 @@ function handleRemoteUpdate(remoteData) {
             syncState.lastSyncTime = new Date();
             syncState.pendingChanges = false; // Clear pending changes
             updateSyncStatusDisplay();
+            
+            console.log('✅ Local data updated successfully');
+        } else {
+            console.log('⏭️ Remote data is older, keeping local data');
         }
         
     } catch (error) {
@@ -1068,13 +1091,15 @@ function pushToFirebase() {
             version: Date.now()
         };
         
+        console.log('📤 Pushing data to Firebase:', dataToPush);
+        
         set(sevaRef, dataToPush).then(() => {
-            console.log('Data pushed to Firebase successfully');
+            console.log('✅ Data pushed to Firebase successfully');
             syncState.lastSyncTime = new Date();
             syncState.pendingChanges = false;
             updateSyncStatusDisplay();
         }).catch((error) => {
-            console.error('Error pushing to Firebase:', error);
+            console.error('❌ Error pushing to Firebase:', error);
             syncState.firebaseConnected = false;
             updateSyncStatusDisplay();
         });
@@ -1775,6 +1800,129 @@ async function shareAssignmentsWithRoom() {
     }
 }
 
+// ============================================================================
+// DEBUG PANEL FOR MOBILE DEVICES
+// ============================================================================
+
+/**
+ * Initialize debug panel for mobile devices
+ */
+function initializeDebugPanel() {
+    // Check if debug mode is enabled or if on mobile
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDebugMode = urlParams.get('debug') === 'true';
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isDebugMode || isMobile) {
+        const debugPanel = document.getElementById('debugPanel');
+        if (debugPanel) {
+            debugPanel.style.display = 'flex';
+            setupDebugEventListeners();
+            debugLog('🔍 Debug panel initialized');
+        }
+    }
+}
+
+/**
+ * Setup debug panel event listeners
+ */
+function setupDebugEventListeners() {
+    const closeDebugBtn = document.getElementById('closeDebug');
+    const clearDebugBtn = document.getElementById('clearDebug');
+    const testSyncBtn = document.getElementById('testSync');
+    
+    if (closeDebugBtn) {
+        closeDebugBtn.addEventListener('click', () => {
+            document.getElementById('debugPanel').style.display = 'none';
+        });
+    }
+    
+    if (clearDebugBtn) {
+        clearDebugBtn.addEventListener('click', clearDebugLog);
+    }
+    
+    if (testSyncBtn) {
+        testSyncBtn.addEventListener('click', testSyncFunction);
+    }
+}
+
+/**
+ * Log message to debug panel
+ */
+function debugLog(message) {
+    const debugLogElement = document.getElementById('debugLog');
+    if (debugLogElement) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugLogElement.textContent += `[${timestamp}] ${message}\n`;
+        debugLogElement.scrollTop = debugLogElement.scrollHeight;
+    }
+    
+    // Also log to console
+    console.log(message);
+}
+
+/**
+ * Clear debug log
+ */
+function clearDebugLog() {
+    const debugLogElement = document.getElementById('debugLog');
+    if (debugLogElement) {
+        debugLogElement.textContent = 'Debug log cleared...\n';
+    }
+}
+
+/**
+ * Test sync function
+ */
+function testSyncFunction() {
+    debugLog('🧪 Testing sync function...');
+    
+    if (syncState.firebaseConnected) {
+        debugLog('✅ Firebase connected');
+        debugLog(`📊 Current assignments: ${JSON.stringify(currentAssignments)}`);
+        pushToFirebase();
+        debugLog('📤 Data pushed to Firebase');
+    } else {
+        debugLog('❌ Firebase not connected');
+        debugLog('🔄 Attempting to reconnect...');
+        initializeFirebaseSync();
+    }
+    
+    debugLog(`🔄 Sync state: ${JSON.stringify({
+        isOnline: syncState.isOnline,
+        firebaseConnected: syncState.firebaseConnected,
+        pendingChanges: syncState.pendingChanges,
+        roomId: getOrCreateRoomId()
+    })}`);
+}
+
+/**
+ * Force sync - useful for testing
+ */
+function forceSync() {
+    console.log('🔄 Force sync triggered');
+    if (syncState.firebaseConnected) {
+        pushToFirebase();
+    } else {
+        console.log('❌ Firebase not connected, cannot force sync');
+    }
+}
+
+// Override console.log to also log to debug panel
+const originalConsoleLog = console.log;
+console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    
+    // Also log to debug panel if it exists
+    const debugLogElement = document.getElementById('debugLog');
+    if (debugLogElement && debugLogElement.parentElement.style.display !== 'none') {
+        const message = args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        debugLog(message);
+    }
+};
+
 // Export functions for testing (if using modules)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1792,6 +1940,8 @@ if (typeof module !== 'undefined' && module.exports) {
         hideQRCodeModal,
         copyQRUrl,
         initializeGlobalSync,
-        pushToFirebase
+        pushToFirebase,
+        debugLog,
+        testSyncFunction
     };
 }
