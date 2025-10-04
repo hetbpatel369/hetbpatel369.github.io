@@ -1005,18 +1005,28 @@ function handleRemoteUpdate(remoteData) {
     try {
         const remoteTimestamp = new Date(remoteData.timestamp).getTime();
         const localTimestamp = new Date(localStorage.getItem(LAST_UPDATED_KEY) || 0).getTime();
+        const timeDiff = remoteTimestamp - localTimestamp;
         
         console.log('Remote update received:', {
             remoteTime: remoteData.timestamp,
             localTime: localStorage.getItem(LAST_UPDATED_KEY),
-            timeDiff: remoteTimestamp - localTimestamp,
+            timeDiff: timeDiff,
+            remoteModifiedBy: remoteData.lastModifiedBy,
+            localViewerId: viewerId,
             pendingChanges: syncState.pendingChanges
         });
+        
+        // If this is our own update echoed back (within 500ms and same viewer), skip it
+        if (remoteData.lastModifiedBy === viewerId && Math.abs(timeDiff) < 500) {
+            console.log('⏭️ Skipping own update echo');
+            syncState.pendingChanges = false;
+            return;
+        }
         
         // Only check for conflicts if we have very recent pending changes (within 2 seconds)
         const timeSinceLastChange = Date.now() - (localTimestamp || 0);
         if (syncState.pendingChanges && timeSinceLastChange < 2000 && remoteTimestamp > localTimestamp) {
-            console.log('Potential conflict detected, but allowing remote update');
+            console.log('⚠️ Potential conflict detected, but allowing remote update');
             // For seva app, we'll be more permissive - use remote data if it's newer
         }
         
@@ -1032,8 +1042,8 @@ function handleRemoteUpdate(remoteData) {
             renderTable();
             updateLastUpdatedTime();
             
-            // Show notification for remote updates
-            if (isLoggedIn) {
+            // Only show notification if this is from a different device
+            if (remoteData.lastModifiedBy !== viewerId) {
                 showNotification('Data updated from another device! 🔄', 'info');
             }
             
@@ -1043,7 +1053,7 @@ function handleRemoteUpdate(remoteData) {
             
             console.log('✅ Local data updated successfully');
         } else {
-            console.log('⏭️ Remote data is older, keeping local data');
+            console.log('⏭️ Remote data is older or same, keeping local data');
         }
         
     } catch (error) {
@@ -1453,21 +1463,8 @@ function notifyOtherUsers(action) {
         // In a real app, this would send to server
         console.log(`Admin action: ${action} - notifying other users`);
         
-        // Update timestamp to trigger sync for other users
-        const currentData = {
-            assignments: currentAssignments,
-            timestamp: getCurrentTimestamp(),
-            lastAction: action,
-            adminId: viewerId
-        };
-        
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData));
-        localStorage.setItem(LAST_UPDATED_KEY, getCurrentTimestamp());
-        
-        // Push to Firebase for global sync
-        if (syncState.firebaseConnected) {
-            pushToFirebase();
-        }
+        // Note: We don't need to push to Firebase here because saveAssignments() already does it
+        // This prevents double-pushing which can cause sync conflicts
         
         showNotification(`Changes saved and synced to all users! 📡`, 'success');
     }
