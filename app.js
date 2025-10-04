@@ -1660,35 +1660,88 @@ function showQRCodeModal() {
     // Set the URL in the input field
     qrUrl.value = shareUrl;
     
-    // Generate QR code
-    if (typeof QRCode !== 'undefined') {
-        // Clear previous QR code
-        qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
-        
-        // Generate new QR code
-        QRCode.toCanvas(qrCanvas, shareUrl, {
-            width: 200,
-            height: 200,
-            color: {
-                dark: '#242424',
-                light: '#ffffff'
-            },
-            margin: 2
-        }, (error) => {
-            if (error) {
-                console.error('QR Code generation error:', error);
-                showNotification('Error generating QR code', 'error');
-            } else {
-                console.log('QR Code generated successfully');
-            }
+    // Check if QRCode library is loaded, if not try to load it
+    if (typeof QRCode === 'undefined') {
+        console.log('QRCode library not found, attempting to load...');
+        loadQRCodeLibrary().then(() => {
+            generateQRCode(qrCanvas, shareUrl);
+        }).catch(() => {
+            showQRCodeFallback(qrCanvas);
         });
     } else {
-        console.warn('QRCode library not loaded');
-        showNotification('QR Code library not available', 'error');
+        generateQRCode(qrCanvas, shareUrl);
     }
     
     // Show the modal
     modal.style.display = 'flex';
+}
+
+/**
+ * Load QR Code library dynamically
+ */
+function loadQRCodeLibrary() {
+    return new Promise((resolve, reject) => {
+        if (typeof QRCode !== 'undefined') {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js';
+        script.onload = () => {
+            console.log('QRCode library loaded dynamically');
+            resolve();
+        };
+        script.onerror = () => {
+            console.error('Failed to load QRCode library dynamically');
+            reject();
+        };
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Generate QR code
+ */
+function generateQRCode(canvas, url) {
+    // Clear previous QR code
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Generate new QR code
+    QRCode.toCanvas(canvas, url, {
+        width: 200,
+        height: 200,
+        color: {
+            dark: '#242424',
+            light: '#ffffff'
+        },
+        margin: 2
+    }, (error) => {
+        if (error) {
+            console.error('QR Code generation error:', error);
+            showQRCodeFallback(canvas);
+        } else {
+            console.log('QR Code generated successfully');
+        }
+    });
+}
+
+/**
+ * Show QR code fallback
+ */
+function showQRCodeFallback(canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#666';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR Code', canvas.width/2, canvas.height/2 - 10);
+    ctx.fillText('Not Available', canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText('Use URL below', canvas.width/2, canvas.height/2 + 30);
+    
+    showNotification('QR Code library loading... Please use the URL below', 'info');
 }
 
 /**
