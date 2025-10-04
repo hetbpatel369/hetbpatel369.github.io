@@ -658,6 +658,52 @@ async function shareAssignments() {
     }
 }
 
+/**
+ * Show share modal with URL
+ */
+function showShareModal() {
+    const modal = document.getElementById('shareModal');
+    const shareUrl = document.getElementById('shareUrl');
+    
+    const roomId = getOrCreateRoomId();
+    const shareUrlValue = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    
+    shareUrl.value = shareUrlValue;
+    modal.style.display = 'flex';
+}
+
+/**
+ * Hide share modal
+ */
+function hideShareModal() {
+    const modal = document.getElementById('shareModal');
+    modal.style.display = 'none';
+}
+
+/**
+ * Copy share URL to clipboard
+ */
+async function copyShareUrl() {
+    const shareUrl = document.getElementById('shareUrl');
+    
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        showNotification('URL copied to clipboard! 📋', 'success');
+    } catch (error) {
+        console.error('Copy to clipboard failed:', error);
+        shareUrl.select();
+        shareUrl.setSelectionRange(0, 99999);
+        
+        try {
+            document.execCommand('copy');
+            showNotification('URL copied to clipboard! 📋', 'success');
+        } catch (fallbackError) {
+            console.error('Fallback copy failed:', fallbackError);
+            showNotification('Copy failed. Please copy manually.', 'error');
+        }
+    }
+}
+
 // ============================================================================
 // EVENT LISTENERS AND INITIALIZATION
 // ============================================================================
