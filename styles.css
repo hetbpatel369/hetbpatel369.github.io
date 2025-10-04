@@ -122,10 +122,6 @@ body {
     transition: background-color 0.3s ease;
 }
 
-/* .seva-table tbody tr:nth-child(even) {
-    background-color: #242424; 
-} */
-
 .seva-table tbody tr:hover {
     background-color: var(--hover-color);
 }
@@ -436,6 +432,7 @@ body {
 }
 
 /* 🔐 LOGIN SYSTEM STYLES */
+/* Desktop login button - top left */
 .login-container {
     position: fixed;
     top: 20px;
@@ -467,6 +464,41 @@ body {
 }
 
 .logout-btn:hover {
+    background: #c82333;
+}
+
+/* Footer login button - mobile only */
+.footer-login-container {
+    margin-top: 15px;
+    display: none; /* Hidden by default */
+    justify-content: center;
+    gap: 10px;
+}
+
+.footer-login-btn, .footer-logout-btn {
+    padding: 8px 16px;
+    background: var(--primary-color);
+    color: #242424;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.footer-login-btn:hover, .footer-logout-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.footer-logout-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.footer-logout-btn:hover {
     background: #c82333;
 }
 
@@ -640,9 +672,24 @@ body {
 
 /* 📱 RESPONSIVE LOGIN */
 @media (max-width: 768px) {
+    /* Hide desktop login button on mobile */
     .login-container {
-        top: 10px;
-        left: 10px;
+        display: none;
+    }
+    
+    /* Show footer login button on mobile */
+    .footer-login-container {
+        display: flex;
+        margin-top: 20px;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .footer-login-btn, .footer-logout-btn {
+        width: 120px;
+        padding: 10px 16px;
+        font-size: 16px;
     }
     
     .login-modal-content {
@@ -659,8 +706,8 @@ body {
     }
 }
 
-/* 📱 QR CODE MODAL STYLES */
-.qr-modal {
+/* 🔗 SHARE LINK MODAL STYLES */
+.share-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -673,7 +720,7 @@ body {
     z-index: 1004;
 }
 
-.qr-modal-content {
+.share-modal-content {
     background: var(--background-color);
     border: 2px solid var(--primary-color);
     border-radius: 12px;
@@ -683,7 +730,7 @@ body {
     animation: modalSlideIn 0.3s ease;
 }
 
-.qr-header {
+.share-header {
     background: var(--primary-color);
     color: #242424;
     padding: 20px;
@@ -693,13 +740,13 @@ body {
     align-items: center;
 }
 
-.qr-header h2 {
+.share-header h2 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 700;
 }
 
-.close-qr-btn {
+.close-share-btn {
     background: none;
     border: none;
     color: #242424;
@@ -715,39 +762,30 @@ body {
     transition: background 0.3s ease;
 }
 
-.close-qr-btn:hover {
+.close-share-btn:hover {
     background: rgba(36, 36, 36, 0.1);
 }
 
-.qr-body {
+.share-body {
     padding: 30px;
     text-align: center;
 }
 
-.qr-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    border: 2px solid var(--border-color);
-}
-
-.qr-instructions {
+.share-instructions {
     color: var(--text-color);
     font-size: 16px;
     margin-bottom: 20px;
     line-height: 1.5;
 }
 
-.qr-url {
+.share-url {
     display: flex;
     gap: 10px;
     align-items: center;
+    margin-bottom: 15px;
 }
 
-.qr-url input {
+.share-url input {
     flex: 1;
     padding: 10px 12px;
     border: 2px solid var(--border-color);
@@ -758,7 +796,7 @@ body {
     font-family: monospace;
 }
 
-.qr-url input:focus {
+.share-url input:focus {
     outline: none;
     border-color: var(--primary-color);
 }
@@ -769,22 +807,28 @@ body {
     white-space: nowrap;
 }
 
-/* 📱 RESPONSIVE QR MODAL */
+.share-note {
+    color: #666;
+    font-size: 14px;
+    font-style: italic;
+}
+
+/* 📱 RESPONSIVE SHARE MODAL */
 @media (max-width: 768px) {
-    .qr-modal-content {
+    .share-modal-content {
         width: 95vw;
         margin: 20px;
     }
     
-    .qr-header {
+    .share-header {
         padding: 15px;
     }
     
-    .qr-body {
+    .share-body {
         padding: 20px;
     }
     
-    .qr-url {
+    .share-url {
         flex-direction: column;
         gap: 10px;
     }
@@ -794,90 +838,5 @@ body {
     }
 }
 
-/* 🔍 DEBUG PANEL FOR MOBILE DEVICES */
-.debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 300px;
-    max-height: 400px;
-    background: var(--background-color);
-    border: 2px solid var(--primary-color);
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    z-index: 1005;
-    display: flex;
-    flex-direction: column;
-}
-
-.debug-header {
-    background: var(--primary-color);
-    color: #242424;
-    padding: 10px 15px;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.debug-header h3 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.close-debug-btn {
-    background: none;
-    border: none;
-    color: #242424;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background 0.3s ease;
-}
-
-.close-debug-btn:hover {
-    background: rgba(36, 36, 36, 0.1);
-}
-
-.debug-log {
-    flex: 1;
-    padding: 10px;
-    background: #000;
-    color: #0f0;
-    font-family: monospace;
-    font-size: 11px;
-    max-height: 250px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    border: 1px solid #333;
-}
-
-.debug-controls {
-    padding: 10px;
-    display: flex;
-    gap: 10px;
-}
-
-.debug-controls .btn {
-    flex: 1;
-    padding: 8px 12px;
-    font-size: 12px;
-}
-
-/* Show debug panel on mobile or when debug=true */
-@media (max-width: 768px) {
-    .debug-panel {
-        width: calc(100vw - 40px);
-        right: 20px;
-        left: 20px;
-    }
-}
 
 /* 🎉 END OF STYLES - Your app is ready to customize! */
