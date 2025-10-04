@@ -1808,12 +1808,11 @@ async function shareAssignmentsWithRoom() {
  * Initialize debug panel for mobile devices
  */
 function initializeDebugPanel() {
-    // Check if debug mode is enabled or if on mobile
+    // Only show debug panel if explicitly requested with ?debug=true
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debug') === 'true';
-    const isMobile = window.innerWidth <= 768;
     
-    if (isDebugMode || isMobile) {
+    if (isDebugMode) {
         const debugPanel = document.getElementById('debugPanel');
         if (debugPanel) {
             debugPanel.style.display = 'flex';
