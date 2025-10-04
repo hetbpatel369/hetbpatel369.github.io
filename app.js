@@ -989,11 +989,13 @@ function initializeFirebaseSync() {
 function getOrCreateRoomId() {
     let roomId = localStorage.getItem('sevaRoomId');
     if (!roomId) {
-        // Create a new room ID based on current URL and timestamp
-        const urlHash = btoa(window.location.href).substring(0, 8);
-        const timestamp = Date.now().toString(36);
-        roomId = `seva-${urlHash}-${timestamp}`;
+        // Create a consistent room ID based on the main URL (without parameters)
+        // This ensures all users of the same seva group get the same room ID
+        const baseUrl = window.location.origin + window.location.pathname;
+        const urlHash = btoa(baseUrl).substring(0, 8);
+        roomId = `seva-${urlHash}`;
         localStorage.setItem('sevaRoomId', roomId);
+        console.log('Created new room ID:', roomId, 'for base URL:', baseUrl);
     }
     return roomId;
 }
@@ -1461,7 +1463,7 @@ function trackViewersWithFirebase() {
         // Set this viewer as online with timestamp
         set(viewersRef, {
             online: true,
-            timestamp: serverTimestamp(),
+            timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent.substring(0, 100) // Truncated for privacy
         });
         
@@ -1489,7 +1491,7 @@ function trackViewersWithFirebase() {
         const heartbeatInterval = setInterval(() => {
             set(viewersRef, {
                 online: true,
-                timestamp: serverTimestamp(),
+                timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent.substring(0, 100)
             });
         }, 15000);
@@ -1498,7 +1500,7 @@ function trackViewersWithFirebase() {
         window.addEventListener('beforeunload', () => {
             set(viewersRef, {
                 online: false,
-                timestamp: serverTimestamp()
+                timestamp: new Date().toISOString()
             });
             clearInterval(heartbeatInterval);
         });
@@ -1508,12 +1510,12 @@ function trackViewersWithFirebase() {
             if (document.hidden) {
                 set(viewersRef, {
                     online: false,
-                    timestamp: serverTimestamp()
+                    timestamp: new Date().toISOString()
                 });
             } else {
                 set(viewersRef, {
                     online: true,
-                    timestamp: serverTimestamp(),
+                    timestamp: new Date().toISOString(),
                     userAgent: navigator.userAgent.substring(0, 100)
                 });
             }
@@ -2050,6 +2052,24 @@ function forceSync() {
     } else {
         console.log('❌ Firebase not connected, cannot force sync');
     }
+}
+
+/**
+ * Reset room ID - useful for debugging room issues
+ */
+function resetRoomId() {
+    const oldRoomId = localStorage.getItem('sevaRoomId');
+    localStorage.removeItem('sevaRoomId');
+    const newRoomId = getOrCreateRoomId();
+    console.log('🔄 Room ID reset:', oldRoomId, '→', newRoomId);
+    
+    // Reinitialize Firebase sync with new room
+    if (window.firebaseDatabase) {
+        initializeFirebaseSync();
+        trackViewersWithFirebase();
+    }
+    
+    showNotification('Room ID reset - you are now in a new room', 'info');
 }
 
 // Override console.log to also log to debug panel
