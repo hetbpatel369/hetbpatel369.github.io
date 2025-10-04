@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Adoha:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- html2canvas library for perfect screenshots -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- QR Code library for sharing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js" onload="console.log('QRCode library loaded successfully')" onerror="console.error('Failed to load QRCode library')"></script>
+    <!-- QR Code library for sharing - using multiple CDN sources for reliability -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js" onload="console.log('QRCode library loaded successfully from unpkg')" onerror="loadQRCodeFallback()"></script>
     <!-- Firebase SDK for real-time sync -->
     <script type="module">
         // Import the functions you need from the SDKs you need
@@ -185,5 +185,23 @@
 
     <!-- Include JavaScript files -->
     <script src="app.js"></script>
+    
+    <!-- QR Code fix - uses online service as fallback -->
+    <script src="qr-fix.js"></script>
+    
+    <!-- QR Code fallback loading function -->
+    <script>
+        function loadQRCodeFallback() {
+            console.log('Primary QRCode CDN failed, trying fallback...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+            script.onload = () => console.log('QRCode library loaded successfully from jsdelivr fallback');
+            script.onerror = () => {
+                console.warn('All QRCode CDNs failed, QR sharing will use URL fallback');
+                window.qrcodeLibraryFailed = true;
+            };
+            document.head.appendChild(script);
+        }
+    </script>
 </body>
 </html>
