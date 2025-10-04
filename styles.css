@@ -433,44 +433,11 @@ body {
 
 /* 🔐 LOGIN SYSTEM STYLES */
 /* Desktop login button - top left */
-.login-container {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 1002;
-}
-
-.login-btn, .logout-btn {
-    padding: 8px 16px;
-    background: var(--primary-color);
-    color: #242424;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 14px;
-}
-
-.login-btn:hover, .logout-btn:hover {
-    background: var(--secondary-color);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.logout-btn {
-    background: #dc3545;
-    color: white;
-}
-
-.logout-btn:hover {
-    background: #c82333;
-}
 
 /* Footer login button - mobile only */
 .footer-login-container {
     margin-top: 15px;
-    display: none; /* Hidden by default */
+    display: flex; /* Show on all devices */
     justify-content: center;
     gap: 10px;
 }
@@ -673,13 +640,8 @@ body {
 /* 📱 RESPONSIVE LOGIN */
 @media (max-width: 768px) {
     /* Hide desktop login button on mobile */
-    .login-container {
-        display: none;
-    }
-    
-    /* Show footer login button on mobile */
+    /* Footer login button on mobile */
     .footer-login-container {
-        display: flex;
         margin-top: 20px;
         flex-direction: column;
         align-items: center;
