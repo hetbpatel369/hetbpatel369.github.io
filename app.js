@@ -1358,7 +1358,7 @@ function updateViewerCountDisplay() {
 }
 
 /**
- * Initialize viewer tracking
+ * Initialize viewer tracking using Firebase
  */
 function initializeViewerTracking() {
     // Generate or get existing viewer ID
@@ -1368,31 +1368,28 @@ function initializeViewerTracking() {
         localStorage.setItem(VIEWER_ID_KEY, viewerId);
     }
     
-    // Initialize viewer count
-    const storedCount = localStorage.getItem(VIEWER_COUNT_KEY);
-    if (storedCount) {
-        viewerCount = parseInt(storedCount) + 1;
-    } else {
-        viewerCount = 1;
-    }
-    
-    localStorage.setItem(VIEWER_COUNT_KEY, viewerCount.toString());
+    // Initialize viewer count to 1 (will be updated by Firebase)
+    viewerCount = 1;
     updateViewerCountDisplay();
     
-    console.log('Viewer tracking initialized:', viewerId, 'Total viewers:', viewerCount);
+    // Track viewers using Firebase if available
+    if (window.firebaseDatabase) {
+        trackViewersWithFirebase();
+    }
+    
+    console.log('Viewer tracking initialized:', viewerId);
 }
 
 /**
- * Simulate real-time sync (in a real app, this would use WebSockets or similar)
+ * Start real-time sync (now handled by Firebase)
  */
 function startRealTimeSync() {
-    // Check for updates every 5 seconds
+    // Check for updates every 5 seconds (only for backup sync)
     syncInterval = setInterval(() => {
         checkForUpdates();
-        updateViewerCount();
     }, 5000);
     
-    console.log('Real-time sync started');
+    console.log('Real-time sync started (viewers tracked by Firebase)');
 }
 
 /**
@@ -1443,15 +1440,89 @@ function checkForUpdates() {
 }
 
 /**
- * Update viewer count (simulate other users joining/leaving)
+ * Track viewers using Firebase (real-time viewer count)
  */
-function updateViewerCount() {
-    // Simulate random viewer count changes (in real app, this would come from server)
-    const randomChange = Math.random();
-    if (randomChange < 0.1) { // 10% chance of change
-        const change = Math.random() < 0.5 ? 1 : -1;
-        viewerCount = Math.max(1, viewerCount + change);
-        updateViewerCountDisplay();
+function trackViewersWithFirebase() {
+    if (!window.firebaseDatabase) {
+        console.warn('Firebase not available for viewer tracking');
+        return;
+    }
+    
+    try {
+        const db = window.firebaseDatabase;
+        const ref = window.firebaseRef;
+        const set = window.firebaseSet;
+        const onValue = window.firebaseOnValue;
+        const serverTimestamp = window.firebaseServerTimestamp;
+        
+        const roomId = getOrCreateRoomId();
+        const viewersRef = ref(db, `viewers/${roomId}/${viewerId}`);
+        
+        // Set this viewer as online with timestamp
+        set(viewersRef, {
+            online: true,
+            timestamp: serverTimestamp(),
+            userAgent: navigator.userAgent.substring(0, 100) // Truncated for privacy
+        });
+        
+        // Listen for viewer count changes
+        const viewerCountRef = ref(db, `viewers/${roomId}`);
+        onValue(viewerCountRef, (snapshot) => {
+            const viewers = snapshot.val();
+            if (viewers) {
+                // Count active viewers (online in last 30 seconds)
+                const now = Date.now();
+                const activeViewers = Object.values(viewers).filter(viewer => {
+                    if (!viewer.online) return false;
+                    const viewerTime = new Date(viewer.timestamp).getTime();
+                    return (now - viewerTime) < 30000; // 30 seconds
+                });
+                
+                viewerCount = activeViewers.length;
+                updateViewerCountDisplay();
+                
+                console.log(`Viewer count updated: ${viewerCount} active viewers`);
+            }
+        });
+        
+        // Keep this viewer online (heartbeat every 15 seconds)
+        const heartbeatInterval = setInterval(() => {
+            set(viewersRef, {
+                online: true,
+                timestamp: serverTimestamp(),
+                userAgent: navigator.userAgent.substring(0, 100)
+            });
+        }, 15000);
+        
+        // Mark as offline when page unloads
+        window.addEventListener('beforeunload', () => {
+            set(viewersRef, {
+                online: false,
+                timestamp: serverTimestamp()
+            });
+            clearInterval(heartbeatInterval);
+        });
+        
+        // Also mark as offline when page becomes hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                set(viewersRef, {
+                    online: false,
+                    timestamp: serverTimestamp()
+                });
+            } else {
+                set(viewersRef, {
+                    online: true,
+                    timestamp: serverTimestamp(),
+                    userAgent: navigator.userAgent.substring(0, 100)
+                });
+            }
+        });
+        
+        console.log('Firebase viewer tracking initialized');
+        
+    } catch (error) {
+        console.error('Error initializing Firebase viewer tracking:', error);
     }
 }
 
@@ -1471,21 +1542,12 @@ function notifyOtherUsers(action) {
 }
 
 /**
- * Handle page visibility change (when user switches tabs)
+ * Handle page visibility change (now handled by Firebase viewer tracking)
  */
 function handleVisibilityChange() {
-    if (document.hidden) {
-        // Page is hidden, reduce viewer count
-        const currentCount = parseInt(localStorage.getItem(VIEWER_COUNT_KEY) || '1');
-        if (currentCount > 1) {
-            localStorage.setItem(VIEWER_COUNT_KEY, (currentCount - 1).toString());
-        }
-    } else {
-        // Page is visible, increase viewer count
-        const currentCount = parseInt(localStorage.getItem(VIEWER_COUNT_KEY) || '1');
-        localStorage.setItem(VIEWER_COUNT_KEY, (currentCount + 1).toString());
-        updateViewerCountDisplay();
-    }
+    // Visibility changes are now handled by trackViewersWithFirebase()
+    // This function is kept for compatibility but does nothing
+    console.log('Page visibility changed:', document.hidden ? 'hidden' : 'visible');
 }
 
 // ============================================================================
