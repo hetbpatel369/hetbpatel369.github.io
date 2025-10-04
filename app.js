@@ -146,13 +146,18 @@ function saveAssignments() {
         // Mark that we have pending changes
         syncState.pendingChanges = true;
         
-        // Push to Firebase for global sync (with small delay to prevent conflicts)
-        if (syncState.firebaseConnected) {
+        // Push to JSONBin for global sync (with small delay to prevent conflicts)
+        if (syncState.jsonbinConnected) {
+            setTimeout(() => {
+                pushToJsonBin();
+            }, 100); // Small delay to prevent rapid conflicts
+        } else if (syncState.firebaseConnected) {
+            // Fallback to Firebase if available
             setTimeout(() => {
                 pushToFirebase();
-            }, 100); // Small delay to prevent rapid conflicts
+            }, 100);
         } else {
-            // Save to backup if Firebase is not available
+            // Save to backup if no sync available
             saveToBackup();
         }
         
@@ -880,23 +885,27 @@ window.forceSync = forceSync;
 // GLOBAL SYNCHRONIZATION SYSTEM
 // ============================================================================
 
-// Global sync configuration
+// Global sync configuration - JSONBin as primary server
 const SYNC_CONFIG = {
-    firebaseEnabled: true,
-    gistBackupEnabled: true,
-    syncInterval: 5000, // 5 seconds
+    jsonbinEnabled: true,         // JSONBin as primary sync
+    firebaseEnabled: false,       // Disable Firebase
+    gistBackupEnabled: false,     // Disable backup (JSONBin is primary)
+    syncInterval: 3000,           // 3 seconds - faster sync
     conflictResolution: 'server_wins', // 'server_wins', 'client_wins', 'merge'
-    maxRetries: 3
+    maxRetries: 3,
+    jsonbinBinId: '675f8a4ce41b4d026a8b3e2a' // Your JSONBin bin ID
 };
 
 // Sync state variables
 let syncState = {
     isOnline: navigator.onLine,
+    jsonbinConnected: false,
     firebaseConnected: false,
     lastSyncTime: null,
     pendingChanges: false,
     conflictDetected: false,
-    retryCount: 0
+    retryCount: 0,
+    jsonbinInterval: null
 };
 
 // GitHub Gist backup configuration (for offline scenarios)
@@ -916,12 +925,17 @@ function initializeGlobalSync() {
     window.addEventListener('online', handleOnlineStatusChange);
     window.addEventListener('offline', handleOnlineStatusChange);
     
-    // Initialize Firebase sync
+    // Initialize JSONBin as primary sync
+    if (SYNC_CONFIG.jsonbinEnabled) {
+        initializeJsonBinSync();
+    }
+    
+    // Initialize Firebase sync (disabled)
     if (SYNC_CONFIG.firebaseEnabled && window.firebaseDatabase) {
         initializeFirebaseSync();
     }
     
-    // Initialize Gist backup
+    // Initialize Gist backup (disabled)
     if (SYNC_CONFIG.gistBackupEnabled) {
         initializeGistBackup();
     }
@@ -1155,19 +1169,131 @@ function pushToFirebase() {
 }
 
 /**
- * Initialize backup sync using JSONBin.io (free public API)
+ * Initialize JSONBin as primary sync server
  */
-function initializeGistBackup() {
-    console.log('Backup sync system initialized using JSONBin.io');
+function initializeJsonBinSync() {
+    console.log('🔄 JSONBin primary sync system initialized');
     
-    // Try to load from backup if Firebase is not available
-    if (!syncState.firebaseConnected) {
-        loadFromBackup();
+    // Try to load latest data from JSONBin
+    loadFromJsonBin();
+    
+    // Start periodic sync
+    startJsonBinSync();
+    
+    syncState.jsonbinConnected = true;
+    updateSyncStatusDisplay();
+}
+
+/**
+ * Start periodic JSONBin sync
+ */
+function startJsonBinSync() {
+    // Check for updates every 3 seconds
+    syncState.jsonbinInterval = setInterval(async () => {
+        await checkForJsonBinUpdates();
+    }, SYNC_CONFIG.syncInterval);
+    
+    console.log('JSONBin periodic sync started');
+}
+
+/**
+ * Check for updates from JSONBin
+ */
+async function checkForJsonBinUpdates() {
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}/latest`, {
+            headers: {
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
+            }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const remoteData = result.record;
+            
+            if (remoteData && remoteData.assignments) {
+                handleRemoteUpdate(remoteData);
+            }
+        }
+    } catch (error) {
+        console.error('Error checking JSONBin updates:', error);
+        syncState.jsonbinConnected = false;
+        updateSyncStatusDisplay();
     }
 }
 
 /**
- * Save data to backup service (JSONBin.io)
+ * Initialize backup sync using JSONBin.io (free public API) - now disabled
+ */
+function initializeGistBackup() {
+    console.log('Backup sync system disabled (JSONBin is primary)');
+}
+
+/**
+ * Push data to JSONBin (primary sync)
+ */
+async function pushToJsonBin() {
+    try {
+        const dataToPush = {
+            assignments: currentAssignments,
+            timestamp: new Date().toISOString(),
+            lastModifiedBy: viewerId,
+            version: Date.now()
+        };
+        
+        console.log('📤 Pushing data to JSONBin:', dataToPush);
+        
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
+            },
+            body: JSON.stringify(dataToPush)
+        });
+        
+        if (response.ok) {
+            console.log('✅ Data pushed to JSONBin successfully');
+            syncState.lastSyncTime = new Date();
+            syncState.pendingChanges = false;
+            updateSyncStatusDisplay();
+        } else {
+            console.error('❌ Error pushing to JSONBin:', response.status);
+            syncState.jsonbinConnected = false;
+        }
+    } catch (error) {
+        console.error('Error in pushToJsonBin:', error);
+        syncState.jsonbinConnected = false;
+    }
+}
+
+/**
+ * Load data from JSONBin
+ */
+async function loadFromJsonBin() {
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}/latest`, {
+            headers: {
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
+            }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const remoteData = result.record;
+            
+            if (remoteData && remoteData.assignments) {
+                console.log('📥 Loading data from JSONBin:', remoteData);
+                handleRemoteUpdate(remoteData);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading from JSONBin:', error);
+    }
+}
+
+/**
+ * Save data to backup service (JSONBin.io) - now fallback only
  */
 async function saveToBackup() {
     try {
@@ -1324,9 +1450,13 @@ function updateSyncStatusDisplay() {
         syncIndicator.textContent = '📡';
         syncText.textContent = 'Offline';
         syncStatus.classList.add('offline');
+    } else if (syncState.jsonbinConnected) {
+        syncIndicator.textContent = '✅';
+        syncText.textContent = 'JSONBin Synced';
+        syncStatus.classList.add('connected');
     } else if (syncState.firebaseConnected) {
         syncIndicator.textContent = '✅';
-        syncText.textContent = 'Synced';
+        syncText.textContent = 'Firebase Synced';
         syncStatus.classList.add('connected');
     } else if (syncState.conflictDetected) {
         syncIndicator.textContent = '⚠️';
@@ -1334,7 +1464,7 @@ function updateSyncStatusDisplay() {
         syncStatus.classList.add('error');
     } else {
         syncIndicator.textContent = '🔄';
-        syncText.textContent = 'Connecting...';
+        syncText.textContent = 'Connecting to JSONBin...';
     }
 }
 
@@ -1374,12 +1504,11 @@ function initializeViewerTracking() {
     viewerCount = 1;
     updateViewerCountDisplay();
     
-    // Track viewers using Firebase if available
-    if (window.firebaseDatabase) {
-        trackViewersWithFirebase();
-    }
+    // Simple viewer count (since we're using JSONBin as primary)
+    updateViewerCountDisplay();
     
     console.log('Viewer tracking initialized:', viewerId);
+    console.log('Current room ID:', getOrCreateRoomId());
 }
 
 /**
@@ -2070,6 +2199,37 @@ function resetRoomId() {
     }
     
     showNotification('Room ID reset - you are now in a new room', 'info');
+}
+
+/**
+ * Clear all cached data and force fresh start - use after clearing Firebase
+ */
+function clearAllCacheAndReset() {
+    console.log('🗑️ Clearing all cached data...');
+    
+    // Clear room ID
+    localStorage.removeItem('sevaRoomId');
+    console.log('✅ Room ID cleared');
+    
+    // Clear viewer ID (optional - creates new viewer)
+    localStorage.removeItem('sevaAppViewerId');
+    console.log('✅ Viewer ID cleared');
+    
+    // Clear old viewer count
+    localStorage.removeItem('sevaAppViewerCount');
+    console.log('✅ Viewer count cleared');
+    
+    // Get new room ID
+    const newRoomId = getOrCreateRoomId();
+    console.log('🆕 New room ID:', newRoomId);
+    
+    // Reinitialize everything
+    if (window.firebaseDatabase) {
+        initializeFirebaseSync();
+        trackViewersWithFirebase();
+    }
+    
+    showNotification('All cache cleared - fresh start! 🆕', 'success');
 }
 
 // Override console.log to also log to debug panel
