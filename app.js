@@ -1171,17 +1171,95 @@ function pushToFirebase() {
 /**
  * Initialize JSONBin as primary sync server
  */
-function initializeJsonBinSync() {
+async function initializeJsonBinSync() {
     console.log('🔄 JSONBin primary sync system initialized');
     
-    // Try to load latest data from JSONBin
-    loadFromJsonBin();
+    // Try to create or load JSONBin bin
+    await createOrLoadJsonBin();
     
     // Start periodic sync
     startJsonBinSync();
     
     syncState.jsonbinConnected = true;
     updateSyncStatusDisplay();
+}
+
+/**
+ * Create a new JSONBin bin or load existing one
+ */
+async function createOrLoadJsonBin() {
+    try {
+        // First, try to load from the configured bin ID
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}/latest`, {
+            headers: {
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
+            }
+        });
+        
+        if (response.ok) {
+            console.log('✅ JSONBin bin exists, loading data...');
+            const result = await response.json();
+            const remoteData = result.record;
+            
+            if (remoteData && remoteData.assignments) {
+                console.log('📥 Loading data from existing JSONBin:', remoteData);
+                handleRemoteUpdate(remoteData);
+            }
+        } else if (response.status === 404) {
+            console.log('📦 JSONBin bin not found, creating new one...');
+            await createNewJsonBin();
+        }
+    } catch (error) {
+        console.error('Error checking JSONBin:', error);
+        console.log('📦 Creating new JSONBin bin...');
+        await createNewJsonBin();
+    }
+}
+
+/**
+ * Create a new JSONBin bin with default data
+ */
+async function createNewJsonBin() {
+    try {
+        const defaultData = {
+            assignments: currentAssignments,
+            timestamp: new Date().toISOString(),
+            lastModifiedBy: viewerId || 'system',
+            version: Date.now()
+        };
+        
+        console.log('📤 Creating new JSONBin bin with data:', defaultData);
+        
+        const response = await fetch('https://api.jsonbin.io/v3/b', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6',
+                'X-Bin-Name': 'Seva App Data'
+            },
+            body: JSON.stringify(defaultData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const newBinId = result.metadata.id;
+            
+            // Update the configuration with the new bin ID
+            SYNC_CONFIG.jsonbinBinId = newBinId;
+            console.log('✅ New JSONBin bin created:', newBinId);
+            console.log('🔄 Update your code with this bin ID:', newBinId);
+            
+            // Store the bin ID locally for this session
+            localStorage.setItem('jsonbinBinId', newBinId);
+            
+        } else {
+            console.error('❌ Failed to create JSONBin bin:', response.status);
+            syncState.jsonbinConnected = false;
+        }
+    } catch (error) {
+        console.error('Error creating JSONBin bin:', error);
+        syncState.jsonbinConnected = false;
+    }
 }
 
 /**
@@ -1201,7 +1279,14 @@ function startJsonBinSync() {
  */
 async function checkForJsonBinUpdates() {
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}/latest`, {
+        // Use the current bin ID (might be updated dynamically)
+        const binId = SYNC_CONFIG.jsonbinBinId || localStorage.getItem('jsonbinBinId');
+        if (!binId) {
+            console.warn('No JSONBin bin ID available');
+            return;
+        }
+        
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
             headers: {
                 'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
             }
@@ -1214,6 +1299,9 @@ async function checkForJsonBinUpdates() {
             if (remoteData && remoteData.assignments) {
                 handleRemoteUpdate(remoteData);
             }
+        } else if (response.status === 404) {
+            console.log('JSONBin bin not found, attempting to create new one...');
+            await createNewJsonBin();
         }
     } catch (error) {
         console.error('Error checking JSONBin updates:', error);
@@ -1234,6 +1322,14 @@ function initializeGistBackup() {
  */
 async function pushToJsonBin() {
     try {
+        // Use the current bin ID (might be updated dynamically)
+        const binId = SYNC_CONFIG.jsonbinBinId || localStorage.getItem('jsonbinBinId');
+        if (!binId) {
+            console.warn('No JSONBin bin ID available, creating new bin...');
+            await createNewJsonBin();
+            return;
+        }
+        
         const dataToPush = {
             assignments: currentAssignments,
             timestamp: new Date().toISOString(),
@@ -1243,7 +1339,7 @@ async function pushToJsonBin() {
         
         console.log('📤 Pushing data to JSONBin:', dataToPush);
         
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}`, {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1257,6 +1353,9 @@ async function pushToJsonBin() {
             syncState.lastSyncTime = new Date();
             syncState.pendingChanges = false;
             updateSyncStatusDisplay();
+        } else if (response.status === 404) {
+            console.log('JSONBin bin not found, creating new one...');
+            await createNewJsonBin();
         } else {
             console.error('❌ Error pushing to JSONBin:', response.status);
             syncState.jsonbinConnected = false;
@@ -1272,7 +1371,14 @@ async function pushToJsonBin() {
  */
 async function loadFromJsonBin() {
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${SYNC_CONFIG.jsonbinBinId}/latest`, {
+        // Use the current bin ID (might be updated dynamically)
+        const binId = SYNC_CONFIG.jsonbinBinId || localStorage.getItem('jsonbinBinId');
+        if (!binId) {
+            console.warn('No JSONBin bin ID available');
+            return;
+        }
+        
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
             headers: {
                 'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
             }
@@ -1501,7 +1607,7 @@ function initializeViewerTracking() {
     }
     
     // Initialize viewer count to 1 (will be updated by Firebase)
-    viewerCount = 1;
+        viewerCount = 1;
     updateViewerCountDisplay();
     
     // Simple viewer count (since we're using JSONBin as primary)
@@ -1610,7 +1716,7 @@ function trackViewersWithFirebase() {
                 });
                 
                 viewerCount = activeViewers.length;
-                updateViewerCountDisplay();
+        updateViewerCountDisplay();
                 
                 console.log(`Viewer count updated: ${viewerCount} active viewers`);
             }
