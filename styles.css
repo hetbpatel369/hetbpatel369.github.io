@@ -637,9 +637,17 @@ body {
 
 /* 📱 RESPONSIVE LOGIN */
 @media (max-width: 768px) {
-    /* Hide desktop login button on mobile */
+    /* Keep login button visible on mobile */
     .login-container {
-        display: none;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1002;
+    }
+    
+    .login-btn, .logout-btn {
+        padding: 6px 12px;
+        font-size: 12px;
     }
     
     .login-modal-content {
