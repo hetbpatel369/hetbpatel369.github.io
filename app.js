@@ -135,7 +135,7 @@ function updateLastUpdatedTime() {
 // ============================================================================
 
 /**
- * Saves the current assignments to browser's localStorage
+ * Saves the current assignments to browser's localStorage and syncs to cloud
  * localStorage is a browser feature that persists data even after closing the browser
  */
 function saveAssignments() {
@@ -149,6 +149,17 @@ function saveAssignments() {
         // Save to localStorage (converts object to JSON string)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
         localStorage.setItem(LAST_UPDATED_KEY, getCurrentTimestamp());
+        
+        // Mark that we have pending changes
+        syncState.pendingChanges = true;
+        
+        // Push to Firebase for global sync
+        if (syncState.firebaseConnected) {
+            pushToFirebase();
+        } else {
+            // Save to backup if Firebase is not available
+            saveToBackup();
+        }
         
         // Update the display
         updateLastUpdatedTime();
@@ -673,6 +684,10 @@ function setupEventListeners() {
     const shareBtn = document.getElementById('shareBtn');
     shareBtn.addEventListener('click', shareAssignments);
     
+    // QR Code button - global sync sharing
+    const qrBtn = document.getElementById('qrBtn');
+    qrBtn.addEventListener('click', showQRCodeModal);
+    
     // Reset button - utility function
     const resetBtn = document.getElementById('resetBtn');
     resetBtn.addEventListener('click', resetToDefault);
@@ -687,6 +702,21 @@ function setupEventListeners() {
         document.getElementById('notification').style.display = 'none';
     });
     
+    // QR Modal event listeners
+    const closeQrModalBtn = document.getElementById('closeQrModal');
+    closeQrModalBtn.addEventListener('click', hideQRCodeModal);
+    
+    const copyUrlBtn = document.getElementById('copyUrlBtn');
+    copyUrlBtn.addEventListener('click', copyQRUrl);
+    
+    // Close QR modal when clicking outside
+    const qrModal = document.getElementById('qrModal');
+    qrModal.addEventListener('click', (e) => {
+        if (e.target === qrModal) {
+            hideQRCodeModal();
+        }
+    });
+    
     // Keyboard shortcuts for power users
     document.addEventListener('keydown', (event) => {
         // Ctrl+R or Cmd+R for rotation
@@ -699,6 +729,11 @@ function setupEventListeners() {
         if ((event.ctrlKey || event.metaKey) && event.key === 's') {
             event.preventDefault(); // Prevent browser save
             takeScreenshot();
+        }
+        
+        // Escape key to close modals
+        if (event.key === 'Escape') {
+            hideQRCodeModal();
         }
     });
     
@@ -729,6 +764,12 @@ function initializeApp() {
         // Initialize real-time features
         initializeViewerTracking();
         startRealTimeSync();
+        
+        // Check for room parameter in URL
+        checkForRoomParameter();
+        
+        // Initialize global sync system
+        initializeGlobalSync();
         
         // Set up page visibility handling
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -789,7 +830,434 @@ window.forceReset = function() {
 };
 
 // ============================================================================
-// REAL-TIME SYNCHRONIZATION SYSTEM
+// GLOBAL SYNCHRONIZATION SYSTEM
+// ============================================================================
+
+// Global sync configuration
+const SYNC_CONFIG = {
+    firebaseEnabled: true,
+    gistBackupEnabled: true,
+    syncInterval: 5000, // 5 seconds
+    conflictResolution: 'server_wins', // 'server_wins', 'client_wins', 'merge'
+    maxRetries: 3
+};
+
+// Sync state variables
+let syncState = {
+    isOnline: navigator.onLine,
+    firebaseConnected: false,
+    lastSyncTime: null,
+    pendingChanges: false,
+    conflictDetected: false,
+    retryCount: 0
+};
+
+// GitHub Gist backup configuration (for offline scenarios)
+const GIST_CONFIG = {
+    username: 'seva-backup', // You can change this
+    token: '', // Leave empty for public gists
+    gistId: null // Will be created automatically
+};
+
+/**
+ * Initialize global sync system
+ */
+function initializeGlobalSync() {
+    console.log('Initializing global sync system...');
+    
+    // Set up online/offline detection
+    window.addEventListener('online', handleOnlineStatusChange);
+    window.addEventListener('offline', handleOnlineStatusChange);
+    
+    // Initialize Firebase sync
+    if (SYNC_CONFIG.firebaseEnabled && window.firebaseDatabase) {
+        initializeFirebaseSync();
+    }
+    
+    // Initialize Gist backup
+    if (SYNC_CONFIG.gistBackupEnabled) {
+        initializeGistBackup();
+    }
+    
+    // Start sync monitoring
+    startSyncMonitoring();
+    
+    // Update sync status display
+    updateSyncStatusDisplay();
+    
+    console.log('Global sync system initialized');
+}
+
+/**
+ * Initialize Firebase real-time sync
+ */
+function initializeFirebaseSync() {
+    try {
+        if (!window.firebaseDatabase) {
+            console.warn('Firebase not available, using local storage only');
+            return;
+        }
+        
+        const db = window.firebaseDatabase;
+        const ref = window.firebaseRef;
+        const onValue = window.firebaseOnValue;
+        const set = window.firebaseSet;
+        
+        // Create a unique room ID for this seva group
+        const roomId = getOrCreateRoomId();
+        const sevaRef = ref(db, `seva-rooms/${roomId}`);
+        
+        // Listen for real-time updates
+        onValue(sevaRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.assignments) {
+                handleRemoteUpdate(data);
+            }
+        }, (error) => {
+            console.error('Firebase sync error:', error);
+            syncState.firebaseConnected = false;
+            updateSyncStatusDisplay();
+        });
+        
+        // Mark as connected
+        syncState.firebaseConnected = true;
+        updateSyncStatusDisplay();
+        
+        console.log('Firebase sync initialized for room:', roomId);
+        
+    } catch (error) {
+        console.error('Error initializing Firebase sync:', error);
+        syncState.firebaseConnected = false;
+        updateSyncStatusDisplay();
+    }
+}
+
+/**
+ * Get or create a unique room ID for this seva group
+ */
+function getOrCreateRoomId() {
+    let roomId = localStorage.getItem('sevaRoomId');
+    if (!roomId) {
+        // Create a new room ID based on current URL and timestamp
+        const urlHash = btoa(window.location.href).substring(0, 8);
+        const timestamp = Date.now().toString(36);
+        roomId = `seva-${urlHash}-${timestamp}`;
+        localStorage.setItem('sevaRoomId', roomId);
+    }
+    return roomId;
+}
+
+/**
+ * Handle updates from remote devices
+ */
+function handleRemoteUpdate(remoteData) {
+    try {
+        const remoteTimestamp = new Date(remoteData.timestamp).getTime();
+        const localTimestamp = new Date(localStorage.getItem(LAST_UPDATED_KEY) || 0).getTime();
+        
+        // Check for conflicts
+        if (syncState.pendingChanges && remoteTimestamp > localTimestamp) {
+            handleSyncConflict(remoteData);
+            return;
+        }
+        
+        // Update local data if remote is newer
+        if (remoteTimestamp > localTimestamp) {
+            currentAssignments = remoteData.assignments || [];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+            localStorage.setItem(LAST_UPDATED_KEY, remoteData.timestamp);
+            
+            renderTable();
+            updateLastUpdatedTime();
+            
+            if (isLoggedIn) {
+                showNotification('Data updated from another device! 🔄', 'info');
+            }
+            
+            syncState.lastSyncTime = new Date();
+            updateSyncStatusDisplay();
+        }
+        
+    } catch (error) {
+        console.error('Error handling remote update:', error);
+    }
+}
+
+/**
+ * Handle sync conflicts when multiple devices edit simultaneously
+ */
+function handleSyncConflict(remoteData) {
+    console.log('Sync conflict detected');
+    syncState.conflictDetected = true;
+    
+    if (SYNC_CONFIG.conflictResolution === 'server_wins') {
+        // Use remote data
+        currentAssignments = remoteData.assignments || [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+        localStorage.setItem(LAST_UPDATED_KEY, remoteData.timestamp);
+        renderTable();
+        showNotification('Conflict resolved: Using data from other device', 'info');
+    } else if (SYNC_CONFIG.conflictResolution === 'client_wins') {
+        // Keep local data and push to server
+        pushToFirebase();
+        showNotification('Conflict resolved: Your changes were kept', 'info');
+    } else {
+        // Show conflict resolution dialog
+        showConflictResolutionDialog(remoteData);
+    }
+    
+    syncState.pendingChanges = false;
+    syncState.conflictDetected = false;
+}
+
+/**
+ * Show conflict resolution dialog
+ */
+function showConflictResolutionDialog(remoteData) {
+    const message = `Conflict detected! Another device made changes at ${remoteData.timestamp}.\n\nChoose how to resolve:`;
+    const choice = confirm(message + '\n\nOK = Use their changes\nCancel = Keep your changes');
+    
+    if (choice) {
+        // Use remote data
+        currentAssignments = remoteData.assignments || [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+        localStorage.setItem(LAST_UPDATED_KEY, remoteData.timestamp);
+        renderTable();
+        showNotification('Using changes from other device', 'info');
+    } else {
+        // Keep local data and push to server
+        pushToFirebase();
+        showNotification('Keeping your changes', 'info');
+    }
+}
+
+/**
+ * Push current data to Firebase
+ */
+function pushToFirebase() {
+    if (!window.firebaseDatabase || !syncState.firebaseConnected) {
+        console.warn('Firebase not available for push');
+        return;
+    }
+    
+    try {
+        const db = window.firebaseDatabase;
+        const ref = window.firebaseRef;
+        const set = window.firebaseSet;
+        const serverTimestamp = window.firebaseServerTimestamp;
+        
+        const roomId = getOrCreateRoomId();
+        const sevaRef = ref(db, `seva-rooms/${roomId}`);
+        
+        const dataToPush = {
+            assignments: currentAssignments,
+            timestamp: new Date().toISOString(),
+            lastModifiedBy: viewerId,
+            version: Date.now()
+        };
+        
+        set(sevaRef, dataToPush).then(() => {
+            console.log('Data pushed to Firebase successfully');
+            syncState.lastSyncTime = new Date();
+            syncState.pendingChanges = false;
+            updateSyncStatusDisplay();
+        }).catch((error) => {
+            console.error('Error pushing to Firebase:', error);
+            syncState.firebaseConnected = false;
+            updateSyncStatusDisplay();
+        });
+        
+    } catch (error) {
+        console.error('Error in pushToFirebase:', error);
+    }
+}
+
+/**
+ * Initialize backup sync using JSONBin.io (free public API)
+ */
+function initializeGistBackup() {
+    console.log('Backup sync system initialized using JSONBin.io');
+    
+    // Try to load from backup if Firebase is not available
+    if (!syncState.firebaseConnected) {
+        loadFromBackup();
+    }
+}
+
+/**
+ * Save data to backup service (JSONBin.io)
+ */
+async function saveToBackup() {
+    try {
+        const roomId = getOrCreateRoomId();
+        const backupData = {
+            assignments: currentAssignments,
+            timestamp: getCurrentTimestamp(),
+            roomId: roomId,
+            version: Date.now()
+        };
+        
+        // Use JSONBin.io for backup (free public API)
+        const response = await fetch('https://api.jsonbin.io/v3/b', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': '$2a$10$your-key-here' // You can get a free key from jsonbin.io
+            },
+            body: JSON.stringify(backupData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            localStorage.setItem('backupBinId', result.metadata.id);
+            console.log('Data backed up successfully:', result.metadata.id);
+            return result.metadata.id;
+        } else {
+            console.warn('Backup save failed:', response.status);
+        }
+    } catch (error) {
+        console.error('Backup save error:', error);
+    }
+    return null;
+}
+
+/**
+ * Load data from backup service
+ */
+async function loadFromBackup() {
+    try {
+        const backupBinId = localStorage.getItem('backupBinId');
+        if (!backupBinId) return;
+        
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${backupBinId}/latest`, {
+            headers: {
+                'X-Master-Key': '$2a$10$your-key-here'
+            }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const backupData = result.record;
+            
+            // Check if backup is newer than local data
+            const backupTimestamp = new Date(backupData.timestamp).getTime();
+            const localTimestamp = new Date(localStorage.getItem(LAST_UPDATED_KEY) || 0).getTime();
+            
+            if (backupTimestamp > localTimestamp) {
+                currentAssignments = backupData.assignments || [];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(backupData));
+                localStorage.setItem(LAST_UPDATED_KEY, backupData.timestamp);
+                renderTable();
+                updateLastUpdatedTime();
+                showNotification('Data restored from backup! 💾', 'info');
+                console.log('Data restored from backup');
+            }
+        }
+    } catch (error) {
+        console.error('Backup load error:', error);
+    }
+}
+
+/**
+ * Start sync monitoring
+ */
+function startSyncMonitoring() {
+    setInterval(() => {
+        if (syncState.isOnline && syncState.firebaseConnected) {
+            // Check for updates
+            checkForRemoteUpdates();
+        } else {
+            // Try to reconnect
+            attemptReconnection();
+        }
+    }, SYNC_CONFIG.syncInterval);
+}
+
+/**
+ * Check for remote updates
+ */
+function checkForRemoteUpdates() {
+    // This is handled by Firebase real-time listeners
+    // But we can also check last sync time
+    if (syncState.lastSyncTime) {
+        const timeSinceLastSync = Date.now() - syncState.lastSyncTime.getTime();
+        if (timeSinceLastSync > SYNC_CONFIG.syncInterval * 2) {
+            console.log('Long time since last sync, checking connection...');
+            updateSyncStatusDisplay();
+        }
+    }
+}
+
+/**
+ * Attempt to reconnect to sync services
+ */
+function attemptReconnection() {
+    if (syncState.retryCount < SYNC_CONFIG.maxRetries) {
+        syncState.retryCount++;
+        console.log(`Attempting reconnection (${syncState.retryCount}/${SYNC_CONFIG.maxRetries})`);
+        
+        if (window.firebaseDatabase && !syncState.firebaseConnected) {
+            initializeFirebaseSync();
+        }
+        
+        setTimeout(() => {
+            syncState.retryCount = 0;
+        }, 30000); // Reset retry count after 30 seconds
+    }
+}
+
+/**
+ * Handle online/offline status changes
+ */
+function handleOnlineStatusChange() {
+    syncState.isOnline = navigator.onLine;
+    
+    if (syncState.isOnline) {
+        console.log('Device is online, attempting to sync...');
+        if (window.firebaseDatabase) {
+            initializeFirebaseSync();
+        }
+    } else {
+        console.log('Device is offline, using local storage only');
+        syncState.firebaseConnected = false;
+    }
+    
+    updateSyncStatusDisplay();
+}
+
+/**
+ * Update sync status display
+ */
+function updateSyncStatusDisplay() {
+    const syncStatus = document.getElementById('syncStatus');
+    const syncIndicator = document.getElementById('syncIndicator');
+    const syncText = document.getElementById('syncText');
+    
+    if (!syncStatus) return;
+    
+    // Remove existing status classes
+    syncStatus.classList.remove('connected', 'error', 'offline');
+    
+    if (!syncState.isOnline) {
+        syncIndicator.textContent = '📡';
+        syncText.textContent = 'Offline';
+        syncStatus.classList.add('offline');
+    } else if (syncState.firebaseConnected) {
+        syncIndicator.textContent = '✅';
+        syncText.textContent = 'Synced';
+        syncStatus.classList.add('connected');
+    } else if (syncState.conflictDetected) {
+        syncIndicator.textContent = '⚠️';
+        syncText.textContent = 'Conflict';
+        syncStatus.classList.add('error');
+    } else {
+        syncIndicator.textContent = '🔄';
+        syncText.textContent = 'Connecting...';
+    }
+}
+
+// ============================================================================
+// REAL-TIME SYNCHRONIZATION SYSTEM (LEGACY - KEPT FOR COMPATIBILITY)
 // ============================================================================
 
 /**
@@ -925,6 +1393,11 @@ function notifyOtherUsers(action) {
         
         localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData));
         localStorage.setItem(LAST_UPDATED_KEY, getCurrentTimestamp());
+        
+        // Push to Firebase for global sync
+        if (syncState.firebaseConnected) {
+            pushToFirebase();
+        }
         
         showNotification(`Changes saved and synced to all users! 📡`, 'success');
     }
@@ -1131,6 +1604,165 @@ function setupLoginEventListeners() {
     console.log('Login event listeners set up successfully');
 }
 
+// ============================================================================
+// QR CODE SHARING FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Show QR code modal for sharing with other devices
+ */
+function showQRCodeModal() {
+    const modal = document.getElementById('qrModal');
+    const qrCanvas = document.getElementById('qrCanvas');
+    const qrUrl = document.getElementById('qrUrl');
+    
+    // Generate the current page URL with room ID
+    const roomId = getOrCreateRoomId();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    
+    // Set the URL in the input field
+    qrUrl.value = shareUrl;
+    
+    // Generate QR code
+    if (typeof QRCode !== 'undefined') {
+        // Clear previous QR code
+        qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+        
+        // Generate new QR code
+        QRCode.toCanvas(qrCanvas, shareUrl, {
+            width: 200,
+            height: 200,
+            color: {
+                dark: '#242424',
+                light: '#ffffff'
+            },
+            margin: 2
+        }, (error) => {
+            if (error) {
+                console.error('QR Code generation error:', error);
+                showNotification('Error generating QR code', 'error');
+            } else {
+                console.log('QR Code generated successfully');
+            }
+        });
+    } else {
+        console.warn('QRCode library not loaded');
+        showNotification('QR Code library not available', 'error');
+    }
+    
+    // Show the modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Hide QR code modal
+ */
+function hideQRCodeModal() {
+    const modal = document.getElementById('qrModal');
+    modal.style.display = 'none';
+}
+
+/**
+ * Copy QR URL to clipboard
+ */
+async function copyQRUrl() {
+    const qrUrl = document.getElementById('qrUrl');
+    
+    try {
+        await navigator.clipboard.writeText(qrUrl.value);
+        showNotification('URL copied to clipboard! 📋', 'success');
+    } catch (error) {
+        console.error('Copy to clipboard failed:', error);
+        
+        // Fallback: select the text
+        qrUrl.select();
+        qrUrl.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            document.execCommand('copy');
+            showNotification('URL copied to clipboard! 📋', 'success');
+        } catch (fallbackError) {
+            console.error('Fallback copy failed:', fallbackError);
+            showNotification('Copy failed. Please copy manually.', 'error');
+        }
+    }
+}
+
+// ============================================================================
+// URL PARAMETER HANDLING FOR ROOM SHARING
+// ============================================================================
+
+/**
+ * Check for room parameter in URL and join the room
+ */
+function checkForRoomParameter() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    
+    if (roomParam) {
+        console.log('Joining room:', roomParam);
+        localStorage.setItem('sevaRoomId', roomParam);
+        
+        // Show notification
+        showNotification(`Joined room: ${roomParam}`, 'info');
+        
+        // Clean up URL (remove room parameter)
+        const newUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Initialize sync with the new room
+        if (window.firebaseDatabase) {
+            initializeFirebaseSync();
+        }
+    }
+}
+
+// ============================================================================
+// ENHANCED SHARING WITH ROOM INFORMATION
+// ============================================================================
+
+/**
+ * Enhanced share function that includes room information
+ */
+async function shareAssignmentsWithRoom() {
+    try {
+        const roomId = getOrCreateRoomId();
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+        
+        // Create a formatted text version of the assignments
+        let shareText = "🏠 HOUSE CLEANING SEVA ASSIGNMENTS 🏠\n\n";
+        shareText += "📅 " + getCurrentTimestamp() + "\n";
+        shareText += "🔗 Join this room: " + shareUrl + "\n\n";
+        
+        for (let i = 0; i < SEVA_TASKS.length; i++) {
+            const seva = SEVA_TASKS[i];
+            const bhakto = currentAssignments[i] || [];
+            shareText += `📍 ${seva}: ${bhakto.join(', ')}\n`;
+        }
+        
+        shareText += "\n🙏 Let's complete it before Sunday!";
+        shareText += "\n\n📱 Scan the QR code or use the link to sync across all devices!";
+        
+        // Try to use Web Share API if available (mobile browsers)
+        if (navigator.share) {
+            await navigator.share({
+                title: 'Seva Assignments - Synced Room',
+                text: shareText,
+                url: shareUrl
+            });
+            showNotification('Shared successfully with room sync! 📤', 'success');
+        } else {
+            // Fallback: copy to clipboard
+            await navigator.clipboard.writeText(shareText);
+            showNotification('Assignments with room link copied to clipboard! 📋', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Share with room error:', error);
+        showNotification('Share failed! Try copying manually.', 'error');
+    }
+}
+
 // Export functions for testing (if using modules)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1141,7 +1773,13 @@ if (typeof module !== 'undefined' && module.exports) {
         resetToDefault,
         takeScreenshot,
         shareAssignments,
+        shareAssignmentsWithRoom,
         handleLogin,
-        handleLogout
+        handleLogout,
+        showQRCodeModal,
+        hideQRCodeModal,
+        copyQRUrl,
+        initializeGlobalSync,
+        pushToFirebase
     };
 }

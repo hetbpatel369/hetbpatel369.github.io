@@ -233,6 +233,41 @@ body {
     margin-top: 10px;
 }
 
+/* 🔄 SYNC STATUS INDICATORS */
+.sync-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: rgba(255, 126, 22, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sync-indicator {
+    font-size: 16px;
+    animation: spin 2s linear infinite;
+}
+
+.sync-status.connected .sync-indicator {
+    animation: none;
+    color: #4caf50;
+}
+
+.sync-status.error .sync-indicator {
+    animation: none;
+    color: #f44336;
+}
+
+.sync-status.offline .sync-indicator {
+    animation: none;
+    color: #ff9800;
+}
+
 /* ⏳ LOADING OVERLAY - Shows when app is processing */
 .loading-overlay {
     position: fixed;
@@ -621,6 +656,141 @@ body {
     
     .login-body {
         padding: 20px;
+    }
+}
+
+/* 📱 QR CODE MODAL STYLES */
+.qr-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1004;
+}
+
+.qr-modal-content {
+    background: var(--background-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.qr-header {
+    background: var(--primary-color);
+    color: #242424;
+    padding: 20px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.qr-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.close-qr-btn {
+    background: none;
+    border: none;
+    color: #242424;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.close-qr-btn:hover {
+    background: rgba(36, 36, 36, 0.1);
+}
+
+.qr-body {
+    padding: 30px;
+    text-align: center;
+}
+
+.qr-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+}
+
+.qr-instructions {
+    color: var(--text-color);
+    font-size: 16px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.qr-url {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.qr-url input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-size: 14px;
+    font-family: monospace;
+}
+
+.qr-url input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.copy-url-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+/* 📱 RESPONSIVE QR MODAL */
+@media (max-width: 768px) {
+    .qr-modal-content {
+        width: 95vw;
+        margin: 20px;
+    }
+    
+    .qr-header {
+        padding: 15px;
+    }
+    
+    .qr-body {
+        padding: 20px;
+    }
+    
+    .qr-url {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .copy-url-btn {
+        width: 100%;
     }
 }
 

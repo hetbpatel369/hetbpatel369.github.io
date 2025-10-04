@@ -9,6 +9,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Adoha:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- html2canvas library for perfect screenshots -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- QR Code library for sharing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+    <!-- Firebase SDK for real-time sync -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+      
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyCqBvMYrUBTbqHpE6hnE8UAA6rnWnwWBXk",
+          authDomain: "sevaapp-87cf1.firebaseapp.com",
+          databaseURL: "https://sevaapp-87cf1-default-rtdb.firebaseio.com",
+          projectId: "sevaapp-87cf1",
+          storageBucket: "sevaapp-87cf1.firebasestorage.app",
+          messagingSenderId: "88953951303",
+          appId: "1:88953951303:web:26bcfb85513e14ffbc4d62",
+          measurementId: "G-FZLV5MR2ZT"
+        };
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+        
+        // Make Firebase available globally for the sync system
+        window.firebaseApp = app;
+        window.firebaseDatabase = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseOnValue = onValue;
+        window.firebasePush = push;
+        window.firebaseServerTimestamp = serverTimestamp;
+        
+        console.log('🔥 Firebase initialized successfully with your seva app config!');
+      </script>
 </head>
 <body>
     <!-- Login Button - Top Left -->
@@ -80,6 +118,7 @@
                 <button id="rotateBtn" class="btn rotate-button">Rotate Assignments</button>
                 <button id="screenshotBtn" class="btn screenshot-button">📸 Take Screenshot</button>
                 <button id="shareBtn" class="btn share-button">📤 Share to Group</button>
+                <button id="qrBtn" class="btn qr-button">📱 Share QR Code</button>
                 <button id="resetBtn" class="btn reset-button">🔄 Reset to Default</button>
                 <button id="clearStorageBtn" class="btn clear-storage-button">🗑️ Clear & Reset</button>
             </div>
@@ -90,6 +129,10 @@
             <p>Data is automatically saved and synced across all users</p>
             <p>Last updated: <span id="lastUpdated"></span></p>
             <p id="viewerInfo" class="viewer-info">👥 <span id="viewerCount">1</span> person viewing</p>
+            <div id="syncStatus" class="sync-status">
+                <span id="syncIndicator" class="sync-indicator">🔄</span>
+                <span id="syncText">Connecting...</span>
+            </div>
         </footer>
     </div>
 
@@ -103,6 +146,28 @@
     <div id="notification" class="notification">
         <span id="notificationText"></span>
         <button id="closeNotification" class="close-btn">&times;</button>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="qr-modal">
+        <div class="qr-modal-content">
+            <div class="qr-header">
+                <h2>📱 Share with Other Devices</h2>
+                <button id="closeQrModal" class="close-qr-btn">&times;</button>
+            </div>
+            <div class="qr-body">
+                <div class="qr-container">
+                    <canvas id="qrCanvas" width="200" height="200"></canvas>
+                </div>
+                <p class="qr-instructions">
+                    Scan this QR code with your phone to access the same data on all devices!
+                </p>
+                <div class="qr-url">
+                    <input type="text" id="qrUrl" readonly>
+                    <button id="copyUrlBtn" class="btn copy-url-btn">📋 Copy URL</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Include JavaScript files -->
