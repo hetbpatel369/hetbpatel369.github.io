@@ -1,0 +1,627 @@
+/* 
+ * 🎨 SEVA APP - SIMPLE CSS STYLES 🎨
+ * Easy to modify with magic comments!
+ */
+
+/* ⚡ MAGIC COMMENTS - CHANGE THESE TO CUSTOMIZE YOUR APP ⚡ */
+
+/* 🎨 COLORS - Change these to match your theme */
+:root {
+    --primary-color: #ff7e16;      /* 🟠 Main orange color - change this! */
+    --secondary-color: #e66b00;    /* 🟤 Darker orange for hover */
+    --background-color: #242424;   /* ⚪ Page background - change this! */
+    --hover-color: #393939;
+    --text-color: #ffffff;         /* ⚫ Main text color - change this! */
+    --border-color: #dddddd;       /* ⚪ Light borders */
+    --shadow-color: rgba(0, 0, 0, 0.1); /* 🌫️ Shadow color */
+    --success-color: #4caf50;      /* 🟢 Success messages */
+    --warning-color: #ff9800;      /* 🟠 Warning messages */
+}
+
+/* 📏 SIZES - Adjust these to change layout */
+:root {
+    --container-width: 900px;      /* 📦 Max width - change this! */
+    --title-size: 50px;          /* 📝 Title font size - change this! */
+    --subtitle-size: 16px;       /* 📝 Subtitle font size - change this! */
+    --button-padding: 16px 32px;   /* 🔘 Button padding - change this! */
+    --table-padding: 15px;         /* 📊 Table cell padding - change this! */
+}
+
+/* 🔧 BASIC SETUP - Don't change unless you know what you're doing */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* 📦 MAIN LAYOUT - Change container width in the magic comments above */
+.container {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 🎯 HEADER SECTION - Change title sizes in magic comments above */
+.header {
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.main-title {
+    font-family: 'Adoha', sans-serif;
+    font-size: var(--title-size);        /* 📝 Changed by magic comment */
+    font-weight: 700;
+    color: var(--primary-color);         /* 🟠 Changed by magic comment */
+    margin-bottom: 0;
+    text-shadow: 2px 2px 4px var(--shadow-color);
+}
+
+.sub-title {
+    font-size: var(--subtitle-size);     /* 📝 Changed by magic comment */
+    font-weight: 400;
+    color: var(--primary-color);         /* 🟠 Changed by magic comment */
+    margin-bottom: 10px;
+}
+
+/* 📄 CONTENT AREA */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 📊 TABLE SECTION - Change table padding in magic comments above */
+.table-container {
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    /*box-shadow: 10px 10px 10px var(--shadow-color);*/
+    border: 5px solid var(--shadow-color);
+}
+
+.seva-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--background-color);
+}
+
+.seva-table thead th {
+    background-color: var(--primary-color);  /* 🟠 Changed by magic comment */
+    color: #242424;
+    font-weight: 600;
+    padding: var(--table-padding);           /* 📊 Changed by magic comment */
+    text-align: left;
+    font-size: 1.1rem;
+}
+
+/* 📊 TABLE COLUMNS - Change these percentages to adjust column widths */
+.seva-column {
+    width: 45%;  /* 📊 Seva column width - change this! */
+}
+
+.bhakto-column {
+    width: 55%;  /* 📊 Bhakto column width - change this! */
+}
+
+/* Table rows and cells */
+.seva-table tbody tr {
+    border-bottom: 2px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
+
+.seva-table tbody tr:nth-child(even) {
+   /* background-color: #242424; */
+}
+
+.seva-table tbody tr:hover {
+    background-color: var(--hover-color);
+}
+
+.seva-table td {
+    padding: 12px var(--table-padding);  /* 📊 Changed by magic comment */
+    font-weight: 600;
+    font-size: 1rem;
+    vertical-align: top;
+}
+
+/* 📝 GUJARATI TEXT */
+.gujarati-text {
+    font-size: 1.2rem;
+    color: var(--primary-color);  /* 🟠 Changed by magic comment */
+    text-align: center;
+    margin: 10px 0;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+/* 🔘 BUTTONS SECTION - Change button padding in magic comments above */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+/* 🔘 SIMPLE & CLEAN BUTTON STYLE - Easy to customize! */
+.btn {
+    /* 📏 SPACING & SIZE */
+    padding: 10px 20px;              /* 📐 Inner spacing: top/bottom left/right - try 8px 16px for smaller */
+    min-height: 40px;                /* 📏 Minimum button height for good touch targets */
+    width: auto;                     /* 📏 Let buttons size naturally instead of fixed width */
+    max-width: 250px;                /* 📏 Prevent buttons from getting too wide */
+    
+    /* 🎨 COLORS & APPEARANCE */
+    background: var(--primary-color); /* 🟠 Main button color - change this in magic comments above! */
+    color: #242424;                    /* ⚪ Text color - try #ffffff or #f0f0f0 */
+    border: 1px solid var(--primary-color); /* 🔲 Border color - try 'none' for no border */
+    
+    /* 📐 SHAPE & CORNERS */
+    border-radius: 10px;              /* 📐 Corner roundness: 0px=square, 20px=very round, 50%=pill shape */
+    
+    /* ✍️ TEXT STYLING */
+    font-size: 16px;                 /* 📝 Text size - try 0.9rem for smaller, 1.1rem for larger */
+    font-weight: bold;                /* 📝 Text boldness: 300=light, 400=normal, 600=bold, 700=extra bold */
+    text-decoration: none;           /* 📝 Remove underlines from links */
+    text-align: center;  
+                  /* 📝 Center text in button */
+    
+    /* 🔧 LAYOUT & POSITIONING */
+    display: inline-flex;            /* 📦 Use flexbox for easy centering - try 'inline-block' for simpler */
+    align-items: center;             /* 📦 Center content vertically */
+    justify-content: center;         /* 📦 Center content horizontally */
+    gap: 8px;                        /* 📦 Space between icon and text - try 4px or 12px */
+    
+    /* 🎭 INTERACTIONS */
+    cursor: pointer;                 /* 👆 Show hand cursor on hover */
+    transition: all 0.2s ease;       /* ⏱️ Smooth animations: 0.1s=fast, 0.5s=slow, 'ease-in-out' for different feel */
+    
+    /* 🌟 VISUAL EFFECTS */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 🌫️ Subtle shadow - try 'none' for flat look or increase blur */
+    outline: none;                   /* 🎯 Remove default browser outline */
+}
+
+/* 🔘 BUTTON HOVER EFFECT - What happens when you hover */
+.btn:hover {
+    background: var(--secondary-color);  /* 🟤 Darker color on hover - try lighter color for different effect */
+    border-color: var(--secondary-color); /* 🔲 Match border to background */
+    transform: translateY(-1px);     /* ⬆️ Slight upward movement - try translateY(-2px) for more lift */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* 🌫️ Bigger shadow on hover - try 'none' for no shadow */
+}
+
+/* 🔘 BUTTON ACTIVE EFFECT - What happens when you click */
+.btn:active {
+    transform: translateY(0px);      /* ⬇️ Return to normal position when clicked */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 🌫️ Smaller shadow when pressed */
+    background: var(--secondary-color); /* 🟤 Keep darker color while pressed */
+}
+
+/* 🔘 BUTTON FOCUS EFFECT - For keyboard navigation */
+.btn:focus {
+    outline: 2px solid var(--primary-color); /* 🎯 Visible outline for accessibility */
+    outline-offset: 2px;             /* 📏 Space between button and outline */
+}
+
+/* 🔘 ALL BUTTONS USE THE SAME STYLE - No need for separate styles! */
+/* The .btn class above handles all button styling automatically */
+
+/* 🔻 FOOTER */
+.footer {
+    text-align: center;
+    margin-top: auto;
+    padding: 20px 0;
+    color: #666666;
+    font-size: 0.9rem;
+}
+
+.viewer-info {
+    color: var(--primary-color) !important;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+/* ⏳ LOADING OVERLAY - Shows when app is processing */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    flex-direction: column;
+    color: white;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);  /* 🟠 Changed by magic comment */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 📢 NOTIFICATIONS - Success/error messages */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: var(--success-color);  /* 🟢 Changed by magic comment */
+    color: white;
+    padding: 15px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px var(--shadow-color);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 1001;
+    max-width: 300px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 📱 RESPONSIVE DESIGN - Automatically adapts to mobile screens */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .main-title {
+        font-size: 2rem;  /* 📝 Smaller title on mobile */
+    }
+    
+    .sub-title {
+        font-size: 1.2rem;  /* 📝 Smaller subtitle on mobile */
+    }
+    
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .seva-table {
+        font-size: 0.9rem;
+    }
+    
+    .seva-table thead th,
+    .seva-table td {
+        padding: 10px 8px;
+    }
+}
+
+/* 🖨️ PRINT STYLES - Optimizes for screenshots and printing */
+@media print {
+    .controls {
+        display: none;
+    }
+    
+    .footer {
+        display: none;
+    }
+    
+    .loading-overlay {
+        display: none !important;
+    }
+    
+    .notification {
+        display: none !important;
+    }
+    
+    body {
+        background-color: var(--background-color);
+    }
+    
+    .container {
+        max-width: none;
+        padding: 0;
+    }
+}
+
+/* 📸 SCREENSHOT MODE - Special styling for clean screenshots with breathing space */
+.screenshot-mode {
+    background-color: var(--background-color) !important;
+}
+
+.screenshot-mode .container {
+    max-width: 1000px;  /* Wider for breathing space */
+    margin: 0 auto;
+    padding: 40px;  /* More padding around content */
+    background-color: var(--background-color);
+}
+
+.screenshot-mode .header {
+    margin-bottom: 0px;  /* More space after title */
+}
+
+.screenshot-mode .main-title {
+    font-size: 42px;  /* Slightly larger for better proportion */
+    margin-bottom: 15px;
+}
+
+.screenshot-mode .sub-title {
+    font-size: 18px;  /* Slightly larger */
+    margin-bottom: 25px;
+}
+
+.screenshot-mode .table-container {
+    margin-bottom: 40px;  /* More space after table */
+    border-radius: 12px;  /* Slightly more rounded */
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);  /* More prominent shadow */
+    max-width: 900px;  /* Fixed width for better proportions */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.screenshot-mode .gujarati-text {
+    font-size: 1.2rem;  /* Slightly larger */
+    margin: 30px 0;  /* More breathing space */
+    text-align: center;
+    padding: 0 20px;  /* Side padding */
+}
+
+/* 🔐 LOGIN SYSTEM STYLES */
+.login-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1002;
+}
+
+.login-btn, .logout-btn {
+    padding: 8px 16px;
+    background: var(--primary-color);
+    color: #242424;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.login-btn:hover, .logout-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.logout-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+}
+
+/* 🔐 LOGIN MODAL STYLES */
+.login-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1003;
+}
+
+.login-modal-content {
+    background: var(--background-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-header {
+    background: var(--primary-color);
+    color: #242424;
+    padding: 20px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.login-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.close-login-btn {
+    background: none;
+    border: none;
+    color: #242424;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.close-login-btn:hover {
+    background: rgba(36, 36, 36, 0.1);
+}
+
+.login-body {
+    padding: 30px;
+}
+
+.login-form {
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: var(--text-color);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 126, 22, 0.1);
+}
+
+.submit-login-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary-color);
+    color: #242424;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.submit-login-btn:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.login-error {
+    background: #dc3545;
+    color: white;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.login-info {
+    background: rgba(255, 126, 22, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+}
+
+.login-info p {
+    margin: 5px 0;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.login-info code {
+    background: var(--primary-color);
+    color: #242424;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+/* 📱 RESPONSIVE LOGIN */
+@media (max-width: 768px) {
+    .login-container {
+        top: 10px;
+        left: 10px;
+    }
+    
+    .login-modal-content {
+        width: 95vw;
+        margin: 20px;
+    }
+    
+    .login-header {
+        padding: 15px;
+    }
+    
+    .login-body {
+        padding: 20px;
+    }
+}
+
+/* 🎉 END OF STYLES - Your app is ready to customize! */
