@@ -432,17 +432,15 @@ body {
 }
 
 /* 🔐 LOGIN SYSTEM STYLES */
-/* Desktop login button - top left */
-
-/* Footer login button - mobile only */
-.footer-login-container {
-    margin-top: 15px;
-    display: flex; /* Show on all devices */
-    justify-content: center;
-    gap: 10px;
+/* Login button - top left */
+.login-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1002;
 }
 
-.footer-login-btn, .footer-logout-btn {
+.login-btn, .logout-btn {
     padding: 8px 16px;
     background: var(--primary-color);
     color: #242424;
@@ -454,18 +452,18 @@ body {
     font-size: 14px;
 }
 
-.footer-login-btn:hover, .footer-logout-btn:hover {
+.login-btn:hover, .logout-btn:hover {
     background: var(--secondary-color);
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.footer-logout-btn {
+.logout-btn {
     background: #dc3545;
     color: white;
 }
 
-.footer-logout-btn:hover {
+.logout-btn:hover {
     background: #c82333;
 }
 
@@ -640,18 +638,8 @@ body {
 /* 📱 RESPONSIVE LOGIN */
 @media (max-width: 768px) {
     /* Hide desktop login button on mobile */
-    /* Footer login button on mobile */
-    .footer-login-container {
-        margin-top: 20px;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .footer-login-btn, .footer-logout-btn {
-        width: 120px;
-        padding: 10px 16px;
-        font-size: 16px;
+    .login-container {
+        display: none;
     }
     
     .login-modal-content {
