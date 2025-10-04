@@ -1139,7 +1139,7 @@ async function saveToBackup() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Master-Key': '$2a$10$your-key-here' // You can get a free key from jsonbin.io
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
             },
             body: JSON.stringify(backupData)
         });
@@ -1168,7 +1168,7 @@ async function loadFromBackup() {
         
         const response = await fetch(`https://api.jsonbin.io/v3/b/${backupBinId}/latest`, {
             headers: {
-                'X-Master-Key': '$2a$10$your-key-here'
+                'X-Master-Key': '$2a$10$tW3uHqmmzJcDG2p6Ra6EwOxIEX7FSt2eVgzysmkbfUgXI1crQMMD6'
             }
         });
         
