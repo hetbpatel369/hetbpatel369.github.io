@@ -153,9 +153,11 @@ function saveAssignments() {
         // Mark that we have pending changes
         syncState.pendingChanges = true;
         
-        // Push to Firebase for global sync
+        // Push to Firebase for global sync (with small delay to prevent conflicts)
         if (syncState.firebaseConnected) {
-            pushToFirebase();
+            setTimeout(() => {
+                pushToFirebase();
+            }, 100); // Small delay to prevent rapid conflicts
         } else {
             // Save to backup if Firebase is not available
             saveToBackup();
@@ -955,14 +957,23 @@ function handleRemoteUpdate(remoteData) {
         const remoteTimestamp = new Date(remoteData.timestamp).getTime();
         const localTimestamp = new Date(localStorage.getItem(LAST_UPDATED_KEY) || 0).getTime();
         
-        // Check for conflicts
-        if (syncState.pendingChanges && remoteTimestamp > localTimestamp) {
-            handleSyncConflict(remoteData);
-            return;
+        console.log('Remote update received:', {
+            remoteTime: remoteData.timestamp,
+            localTime: localStorage.getItem(LAST_UPDATED_KEY),
+            timeDiff: remoteTimestamp - localTimestamp,
+            pendingChanges: syncState.pendingChanges
+        });
+        
+        // Only check for conflicts if we have very recent pending changes (within 2 seconds)
+        const timeSinceLastChange = Date.now() - (localTimestamp || 0);
+        if (syncState.pendingChanges && timeSinceLastChange < 2000 && remoteTimestamp > localTimestamp) {
+            console.log('Potential conflict detected, but allowing remote update');
+            // For seva app, we'll be more permissive - use remote data if it's newer
         }
         
-        // Update local data if remote is newer
+        // Update local data if remote is newer (more permissive)
         if (remoteTimestamp > localTimestamp) {
+            console.log('Updating local data with remote data');
             currentAssignments = remoteData.assignments || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
             localStorage.setItem(LAST_UPDATED_KEY, remoteData.timestamp);
@@ -975,6 +986,7 @@ function handleRemoteUpdate(remoteData) {
             }
             
             syncState.lastSyncTime = new Date();
+            syncState.pendingChanges = false; // Clear pending changes
             updateSyncStatusDisplay();
         }
         

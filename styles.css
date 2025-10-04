@@ -122,9 +122,9 @@ body {
     transition: background-color 0.3s ease;
 }
 
-.seva-table tbody tr:nth-child(even) {
-   /* background-color: #242424; */
-}
+/* .seva-table tbody tr:nth-child(even) {
+    background-color: #242424; 
+} */
 
 .seva-table tbody tr:hover {
     background-color: var(--hover-color);
